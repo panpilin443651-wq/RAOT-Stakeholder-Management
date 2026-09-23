@@ -19,6 +19,10 @@ export type OwnedTable = keyof typeof OWNER_SQL;
 
 /** ส่วนงานเจ้าของแถว — undefined เมื่อไม่พบแถวนั้น */
 export function ownerUnitOf(table: OwnedTable, id: number): number | undefined {
+  // id มาจาก JSON body หรือ URL จึงเชื่อชนิดตามที่ประกาศไม่ได้
+  // ค่าที่ไม่ใช่จำนวนเต็ม (undefined/NaN/ออบเจกต์) bind เข้า SQLite ไม่ได้และจะโยน error เป็น 500
+  // ถือว่า "ไม่พบแถว" ให้ผู้เรียกตอบ 404 ตามปกติ
+  if (!Number.isInteger(id)) return undefined;
   return get<{ org_unit_id: number }>(OWNER_SQL[table], id)?.org_unit_id;
 }
 

@@ -31,6 +31,7 @@ export type QuarterResultPayload = {
 };
 
 export function validateQuarterResult(payload: QuarterResultPayload): string | null {
+  if (!Number.isInteger(payload.plan_id)) return "กรุณาระบุแผนงาน/โครงการที่ต้องการบันทึกผล";
   if (!payload.problem?.trim()) return "กรุณาระบุ ปัญหา/อุปสรรค";
   if (!payload.solution?.trim()) return "กรุณาระบุ แนวทางการแก้ไขปัญหา";
   if (payload.is_on_target === null || payload.is_on_target === undefined) {
