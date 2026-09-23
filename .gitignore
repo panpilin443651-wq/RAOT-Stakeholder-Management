@@ -1,0 +1,8 @@
+node_modules
+.next
+data/*.db
+*.tsbuildinfo
+next-env.d.ts
+
+# Source reference document (not published)
+*.pdf

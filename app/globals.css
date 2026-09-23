@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+/* ===== ธีม การยางแห่งประเทศไทย (กยท.) ===== */
+@theme {
+  --color-raot-950: #052e16;
+  --color-raot-900: #0b3d20;
+  --color-raot-800: #11532c;
+  --color-raot-700: #166534;
+  --color-raot-600: #15803d;
+  --color-raot-500: #22a04c;
+  --color-raot-400: #4ec07a;
+  --color-raot-300: #86d9a6;
+  --color-raot-200: #c3ecd3;
+  --color-raot-100: #e2f6ea;
+  --color-raot-50: #f2fbf6;
+  --color-gold-500: #c8a344;
+  --color-gold-400: #dcbb62;
+
+  --font-sans: "Sarabun", "IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI",
+    "Tahoma", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --page-bg: #f4f6f5;
+  --card-bg: #ffffff;
+  --ink: #1f2937;
+  --ink-muted: #6b7280;
+  --line: #dfe3e1;
+  color-scheme: light;
+}
+
+html,
+body {
+  background: var(--page-bg);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+/* ---- แถบเมนูหลัก (โครงเดียวกับระบบ BAAC แต่เป็นโทนเขียว กยท.) ---- */
+.navbar-raot {
+  background: linear-gradient(100deg, var(--color-raot-900) 0%, var(--color-raot-700) 55%, var(--color-raot-500) 100%);
+}
+
+/* ---- ฟอร์ม ---- */
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px 10px;
+  background: #fff;
+  font-size: 14px;
+  line-height: 1.6;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.form-textarea {
+  min-height: 74px;
+  resize: vertical;
+}
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--color-raot-500);
+  box-shadow: 0 0 0 3px var(--color-raot-100);
+}
+.form-input:disabled,
+.form-input[readonly],
+.form-textarea[readonly],
+.form-select:disabled {
+  background: #eef0ef;
+  color: #4b5563;
+  cursor: not-allowed;
+}
+.form-select {
+  color: var(--color-raot-700);
+  font-weight: 500;
+}
+
+.field-label {
+  text-align: right;
+  color: var(--color-raot-800);
+  padding-top: 7px;
+  line-height: 1.55;
+}
+.field-required::after {
+  content: "*";
+  color: #dc2626;
+  margin-left: 2px;
+}
+.field-help {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.field-help:hover {
+  color: var(--color-raot-500);
+}
+
+.btn {
+  border-radius: 4px;
+  padding: 7px 18px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  transition: filter 0.12s, background 0.12s;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+.btn-primary {
+  background: var(--color-raot-600);
+  color: #fff;
+}
+.btn-secondary {
+  background: var(--color-raot-800);
+  color: #fff;
+}
+.btn-ghost {
+  background: #6b7280;
+  color: #fff;
+}
+
+.input-prefix {
+  background: #eef0ef;
+  border: 1px solid var(--line);
+  border-right: 0;
+  border-radius: 4px 0 0 4px;
+  padding: 6px 10px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  font-size: 13px;
+}
+.input-prefix + .form-input {
+  border-radius: 0 4px 4px 0;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+}
