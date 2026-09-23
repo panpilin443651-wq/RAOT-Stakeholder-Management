@@ -1,4 +1,4 @@
-import { bind, bindInt, nowIso, run, get } from "@/lib/db";
+import { bind, bindInt, nowIso, run, get, insertId } from "@/lib/db";
 
 export type ObjectivePayload = {
   scope: "ORG" | "UNIT";
@@ -18,8 +18,8 @@ export function validateObjective(payload: ObjectivePayload): string | null {
   return null;
 }
 
-export function saveObjective(payload: ObjectivePayload, status: string, username: string): number {
-  const existing = get<{ id: number }>(
+export async function saveObjective(payload: ObjectivePayload, status: string, username: string): Promise<number> {
+  const existing = await get<{ id: number }>(
     "SELECT id FROM engagement_objective WHERE scope = ? AND fiscal_year_id = ? AND org_unit_id = ?",
     payload.scope,
     payload.fiscal_year_id,
@@ -37,7 +37,7 @@ export function saveObjective(payload: ObjectivePayload, status: string, usernam
   ];
 
   if (existing) {
-    run(
+    await run(
       `UPDATE engagement_objective
           SET objective = ?, scope_text = ?, target_groups = ?, expected_result = ?,
               status = ?, updated_at = ?, updated_by = ?
@@ -48,7 +48,7 @@ export function saveObjective(payload: ObjectivePayload, status: string, usernam
     return Number(existing.id);
   }
 
-  run(
+  return insertId(
     `INSERT INTO engagement_objective
        (scope, fiscal_year_id, org_unit_id, objective, scope_text, target_groups, expected_result,
         status, updated_at, updated_by)
@@ -58,5 +58,4 @@ export function saveObjective(payload: ObjectivePayload, status: string, usernam
     bindInt(payload.org_unit_id),
     ...values,
   );
-  return Number(get<{ id: number }>("SELECT last_insert_rowid() AS id")!.id);
 }

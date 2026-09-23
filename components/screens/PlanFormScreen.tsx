@@ -26,25 +26,25 @@ export default async function PlanFormScreen({
   const query = searchParams ? await searchParams : {};
   const isNew = id === "new";
 
-  const record = isNew ? undefined : getPlan(Number(id));
+  const record = isNew ? undefined : await getPlan(Number(id));
   if (!isNew && !record) notFound();
   if (record && !canEditOrgUnit(user, record.org_unit_id)) notFound();
 
-  const years = listFiscalYears();
+  const years = await listFiscalYears();
   // แผนใหม่ตั้งต้นที่ปีที่ผู้ใช้กำลังดูอยู่ ถ้าไม่ได้ระบุก็ใช้ปีปัจจุบันที่ผู้ดูแลระบบกำหนด
-  const fiscalYearId = years.find((y) => y.id === Number(query.fy))?.id ?? currentFiscalYearRow().id;
+  const fiscalYearId = years.find((y) => y.id === Number(query.fy))?.id ?? (await currentFiscalYearRow()).id;
 
   return (
     <PlanForm
       scope={scope}
       record={record ?? null}
       years={years}
-      units={selectableUnits(user, listOrgUnits())}
+      units={selectableUnits(user, await listOrgUnits())}
       /* ส่งทุกปีไป เพราะผู้ใช้เปลี่ยนปีในฟอร์มได้โดยไม่โหลดหน้าใหม่
          ผู้บันทึกข้อมูลเห็นเฉพาะทะเบียนของส่วนงานตัวเอง */
-      stakeholders={listStakeholders({ orgUnitId: scopedOrgUnitId(user) })}
-      riskRm={listRiskRm()}
-      riskBa={listRiskBa()}
+      stakeholders={await listStakeholders({ orgUnitId: scopedOrgUnitId(user) })}
+      riskRm={await listRiskRm()}
+      riskBa={await listRiskBa()}
       defaults={{ fiscalYearId, orgUnitId: user.org_unit_id }}
       canApprove={canApprove(user.role)}
     />

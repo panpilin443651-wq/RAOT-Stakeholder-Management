@@ -16,7 +16,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   if (error) return NextResponse.json({ error }, { status: 400 });
 
   try {
-    saveKm({ ...payload, id: Number(id) }, user.username);
+    await saveKm({ ...payload, id: Number(id) }, user.username);
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 404 });
   }
@@ -31,7 +31,7 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   }
 
   const { id } = await context.params;
-  const error = deleteKm(Number(id));
+  const error = await deleteKm(Number(id));
   if (error) return NextResponse.json({ error }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

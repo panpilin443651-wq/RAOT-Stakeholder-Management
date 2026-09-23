@@ -17,12 +17,12 @@ export default async function PlanListScreen({
 }) {
   const user = await requireUser();
   const params = await searchParams;
-  const fiscalYearId = Number(params.fy) || currentFiscalYearRow().id;
+  const fiscalYearId = Number(params.fy) || (await currentFiscalYearRow()).id;
   const basePath = scope === "ORG" ? "/organization/plans" : "/cluster/plans";
   const code = scope === "ORG" ? "040" : "050";
 
   const lockedUnitId = scopedOrgUnitId(user);
-  const rows = listPlans(scope, {
+  const rows = await listPlans(scope, {
     fiscalYearId,
     orgUnitId: lockedUnitId ?? (Number(params.unit) || undefined),
   });
@@ -44,7 +44,7 @@ export default async function PlanListScreen({
           {
             name: "fy",
             label: "ปีงบประมาณ",
-            options: listFiscalYears().map((y) => ({ value: String(y.id), label: String(y.year) })),
+            options: (await listFiscalYears()).map((y) => ({ value: String(y.id), label: String(y.year) })),
             value: String(fiscalYearId),
           },
           ...(scope === "UNIT" && !lockedUnitId
@@ -52,7 +52,7 @@ export default async function PlanListScreen({
                 {
                   name: "unit",
                   label: "ส่วนงาน",
-                  options: selectableUnits(user, listOrgUnits()).map((u) => ({ value: String(u.id), label: u.name })),
+                  options: selectableUnits(user, await listOrgUnits()).map((u) => ({ value: String(u.id), label: u.name })),
                   value: params.unit ?? "",
                 },
               ]

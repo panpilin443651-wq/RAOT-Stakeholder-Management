@@ -20,6 +20,6 @@ export async function POST(request: Request) {
   }
 
   const status = payload.action === "approve" ? "APPROVED" : "DRAFT";
-  const id = saveObjective(payload, status, user.username);
+  const id = await saveObjective(payload, status, user.username);
   return NextResponse.json({ ok: true, id });
 }

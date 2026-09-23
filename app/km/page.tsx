@@ -17,8 +17,8 @@ export default async function KmListPage({
   return (
     <FormCard title="องค์ความรู้การบริหารจัดการผู้มีส่วนได้ส่วนเสีย">
       <KmListClient
-        rows={listKmArticles({ q, category })}
-        categories={listKmCategories()}
+        rows={await listKmArticles({ q, category })}
+        categories={await listKmCategories()}
         q={q}
         category={category}
         canManage={isAdmin(user.role)}

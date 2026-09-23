@@ -12,7 +12,7 @@ export async function PATCH(_request: Request, context: { params: Promise<{ id: 
   }
 
   const { id } = await context.params;
-  const error = setCurrentFiscalYear(Number(id));
+  const error = await setCurrentFiscalYear(Number(id));
   if (error) return NextResponse.json({ error }, { status: 400 });
   return NextResponse.json({ ok: true });
 }
@@ -25,7 +25,7 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   }
 
   const { id } = await context.params;
-  const error = deleteFiscalYear(Number(id));
+  const error = await deleteFiscalYear(Number(id));
   if (error) return NextResponse.json({ error }, { status: 400 });
   return NextResponse.json({ ok: true });
 }

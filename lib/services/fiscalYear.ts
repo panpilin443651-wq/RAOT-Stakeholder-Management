@@ -1,4 +1,4 @@
-import { all, get, run, bindInt } from "@/lib/db";
+import { all, get, run, bindInt, insertId } from "@/lib/db";
 import { FISCAL_YEAR_START_MONTH } from "@/lib/fiscal";
 
 /**
@@ -34,24 +34,24 @@ export type FiscalYearRow = {
 };
 
 /** ปีงบประมาณทั้งหมด พร้อมจำนวนข้อมูลที่ผูกอยู่ ใช้ในหน้าตั้งค่า */
-export function listFiscalYearsWithUsage(): FiscalYearRow[] {
+export async function listFiscalYearsWithUsage(): Promise<FiscalYearRow[]> {
   const usage = REFERENCING_TABLES.map(
     (t) => `(SELECT COUNT(*) FROM ${t.table} x WHERE x.fiscal_year_id = f.id)`,
   ).join(" + ");
-  return all<FiscalYearRow>(
+  return await all<FiscalYearRow>(
     `SELECT f.id, f.year, f.start_month, f.is_current, ${usage} AS usage
        FROM fiscal_year f
       ORDER BY f.year DESC`,
   );
 }
 
-export function validateFiscalYear(payload: FiscalYearPayload): string | null {
+export async function validateFiscalYear(payload: FiscalYearPayload): Promise<string | null> {
   const year = bindInt(payload.year);
   if (year === null) return "กรุณาระบุ ปีงบประมาณ";
   if (year < MIN_YEAR || year > MAX_YEAR) {
     return `ปีงบประมาณต้องเป็น พ.ศ. ระหว่าง ${MIN_YEAR} ถึง ${MAX_YEAR}`;
   }
-  if (get("SELECT id FROM fiscal_year WHERE year = ?", year)) {
+  if (await get("SELECT id FROM fiscal_year WHERE year = ?", year)) {
     return `มีปีงบประมาณ ${year} อยู่แล้ว`;
   }
 
@@ -63,46 +63,48 @@ export function validateFiscalYear(payload: FiscalYearPayload): string | null {
 }
 
 /** เพิ่มปีงบประมาณใหม่ คืนค่า id ของปีที่เพิ่ม */
-export function createFiscalYear(payload: FiscalYearPayload): number {
+export async function createFiscalYear(payload: FiscalYearPayload): Promise<number> {
   const year = bindInt(payload.year)!;
   const startMonth = bindInt(payload.start_month ?? FISCAL_YEAR_START_MONTH)!;
 
-  run("INSERT INTO fiscal_year (year, start_month, is_current) VALUES (?,?,0)", year, startMonth);
-  const id = Number(get<{ id: number }>("SELECT last_insert_rowid() AS id")!.id);
+  const id = await insertId("INSERT INTO fiscal_year (year, start_month, is_current) VALUES (?,?,0)", year, startMonth);
 
-  if (payload.make_current) setCurrentFiscalYear(id);
+  if (payload.make_current) await setCurrentFiscalYear(id);
   return id;
 }
 
 /** กำหนดปีปัจจุบัน — มีได้ปีเดียวเสมอ */
-export function setCurrentFiscalYear(id: number): string | null {
-  if (!get("SELECT id FROM fiscal_year WHERE id = ?", id)) return "ไม่พบปีงบประมาณที่เลือก";
-  run("UPDATE fiscal_year SET is_current = 0 WHERE is_current = 1");
-  run("UPDATE fiscal_year SET is_current = 1 WHERE id = ?", id);
+export async function setCurrentFiscalYear(id: number): Promise<string | null> {
+  if (!await get("SELECT id FROM fiscal_year WHERE id = ?", id)) return "ไม่พบปีงบประมาณที่เลือก";
+  await run("UPDATE fiscal_year SET is_current = 0 WHERE is_current = 1");
+  await run("UPDATE fiscal_year SET is_current = 1 WHERE id = ?", id);
   return null;
 }
 
 /** ลบปีงบประมาณ — ทำได้เฉพาะปีที่ยังไม่มีข้อมูลผูกอยู่ และไม่ใช่ปีปัจจุบัน */
-export function deleteFiscalYear(id: number): string | null {
-  const row = get<{ id: number; year: number; is_current: number }>(
+export async function deleteFiscalYear(id: number): Promise<string | null> {
+  const row = await get<{ id: number; year: number; is_current: number }>(
     "SELECT id, year, is_current FROM fiscal_year WHERE id = ?",
     id,
   );
   if (!row) return "ไม่พบปีงบประมาณที่เลือก";
   if (row.is_current) return "ลบปีปัจจุบันไม่ได้ — กรุณาย้ายปีปัจจุบันไปปีอื่นก่อน";
 
-  const blocking = REFERENCING_TABLES.map((t) => ({
-    label: t.label,
-    count: Number(
-      get<{ n: number }>(`SELECT COUNT(*) AS n FROM ${t.table} WHERE fiscal_year_id = ?`, id)?.n ?? 0,
-    ),
-  })).filter((t) => t.count > 0);
+  const counted = await Promise.all(
+    REFERENCING_TABLES.map(async (t) => ({
+      label: t.label,
+      count: Number(
+        (await get<{ n: number }>(`SELECT COUNT(*) AS n FROM ${t.table} WHERE fiscal_year_id = ?`, id))?.n ?? 0,
+      ),
+    })),
+  );
+  const blocking = counted.filter((t) => t.count > 0);
 
   if (blocking.length > 0) {
     const detail = blocking.map((t) => `${t.label} ${t.count} รายการ`).join(" · ");
     return `ลบปี ${row.year} ไม่ได้ เพราะมีข้อมูลผูกอยู่แล้ว (${detail})`;
   }
 
-  run("DELETE FROM fiscal_year WHERE id = ?", id);
+  await run("DELETE FROM fiscal_year WHERE id = ?", id);
   return null;
 }

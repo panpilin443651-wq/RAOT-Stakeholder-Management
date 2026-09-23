@@ -15,9 +15,9 @@ export async function POST(request: Request) {
   }
 
   const payload = (await request.json()) as FiscalYearPayload;
-  const error = validateFiscalYear(payload);
+  const error = await validateFiscalYear(payload);
   if (error) return NextResponse.json({ error }, { status: 400 });
 
-  const id = createFiscalYear(payload);
+  const id = await createFiscalYear(payload);
   return NextResponse.json({ ok: true, id });
 }

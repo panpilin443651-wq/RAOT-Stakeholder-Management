@@ -11,7 +11,7 @@ export async function GET(request: Request, context: { params: Promise<{ code: s
   if (!isReportCode(code)) return NextResponse.json({ error: "ไม่พบรายงาน" }, { status: 404 });
 
   const url = new URL(request.url);
-  const report = buildReport(code, {
+  const report = await buildReport(code, {
     fiscalYearId: Number(url.searchParams.get("fy")) || undefined,
     // ผู้บันทึกข้อมูลส่งออกได้เฉพาะข้อมูลของส่วนงานตัวเอง แม้จะใส่ unit อื่นมาใน URL
     orgUnitId: scopedOrgUnitId(user) ?? (Number(url.searchParams.get("unit")) || undefined),

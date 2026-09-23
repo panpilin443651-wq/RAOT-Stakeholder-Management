@@ -1,4 +1,4 @@
-import { bind, bindInt, nowIso, run, get } from "@/lib/db";
+import { bind, bindInt, nowIso, run, get, insertId } from "@/lib/db";
 
 export type ExpectationPayload = {
   id?: number;
@@ -26,7 +26,7 @@ const COLUMNS = [
   "status", "updated_at", "updated_by",
 ];
 
-export function saveExpectation(payload: ExpectationPayload, status: string, username: string): number {
+export async function saveExpectation(payload: ExpectationPayload, status: string, username: string): Promise<number> {
   const values = [
     bindInt(payload.fiscal_year_id), bindInt(payload.org_unit_id), bindInt(payload.stakeholder_id),
     bind(payload.need), bind(payload.expectation), bind(payload.channel),
@@ -35,9 +35,15 @@ export function saveExpectation(payload: ExpectationPayload, status: string, use
   ];
 
   if (payload.id) {
-    run(`UPDATE expectation SET ${COLUMNS.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`, ...values, payload.id);
+    await run(
+      `UPDATE expectation SET ${COLUMNS.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`,
+      ...values,
+      payload.id,
+    );
     return payload.id;
   }
-  run(`INSERT INTO expectation (${COLUMNS.join(", ")}) VALUES (${COLUMNS.map(() => "?").join(", ")})`, ...values);
-  return Number(get<{ id: number }>("SELECT last_insert_rowid() AS id")!.id);
+  return insertId(
+    `INSERT INTO expectation (${COLUMNS.join(", ")}) VALUES (${COLUMNS.map(() => "?").join(", ")})`,
+    ...values,
+  );
 }

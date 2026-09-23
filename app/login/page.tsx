@@ -4,8 +4,8 @@ import FormCard from "@/components/FormCard";
 import LoginList from "@/components/LoginList";
 import RaotLogo from "@/components/RaotLogo";
 
-export default function LoginPage() {
-  const users = listUsers();
+export default async function LoginPage() {
+  const users = await listUsers();
   return (
     <div className="mx-auto max-w-3xl">
       <FormCard title="เข้าสู่ระบบ" code="000">

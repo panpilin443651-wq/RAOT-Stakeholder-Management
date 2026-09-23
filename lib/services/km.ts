@@ -1,4 +1,4 @@
-import { bind, get, nowIso, run } from "@/lib/db";
+import { bind, get, nowIso, run, insertId } from "@/lib/db";
 
 /**
  * องค์ความรู้ — ผู้ดูแลระบบเพิ่ม แก้ไข และลบหัวข้อได้เอง
@@ -19,14 +19,14 @@ export function validateKm(payload: KmPayload): string | null {
   return null;
 }
 
-export function saveKm(payload: KmPayload, username: string): number {
+export async function saveKm(payload: KmPayload, username: string): Promise<number> {
   const now = nowIso();
 
   if (payload.id) {
-    if (!get("SELECT id FROM km_article WHERE id = ?", payload.id)) {
+    if (!await get("SELECT id FROM km_article WHERE id = ?", payload.id)) {
       throw new Error("ไม่พบหัวข้อองค์ความรู้ที่ต้องการแก้ไข");
     }
-    run(
+    await run(
       `UPDATE km_article
           SET title = ?, summary = ?, category = ?, body = ?, updated_at = ?, updated_by = ?
         WHERE id = ?`,
@@ -41,7 +41,7 @@ export function saveKm(payload: KmPayload, username: string): number {
     return payload.id;
   }
 
-  run(
+  return insertId(
     `INSERT INTO km_article (title, summary, category, body, created_at, created_by, updated_at, updated_by)
      VALUES (?,?,?,?,?,?,?,?)`,
     bind(payload.title.trim()),
@@ -53,11 +53,10 @@ export function saveKm(payload: KmPayload, username: string): number {
     now,
     bind(username),
   );
-  return Number(get<{ id: number }>("SELECT last_insert_rowid() AS id")!.id);
 }
 
-export function deleteKm(id: number): string | null {
-  if (!get("SELECT id FROM km_article WHERE id = ?", id)) return "ไม่พบหัวข้อองค์ความรู้ที่เลือก";
-  run("DELETE FROM km_article WHERE id = ?", id);
+export async function deleteKm(id: number): Promise<string | null> {
+  if (!await get("SELECT id FROM km_article WHERE id = ?", id)) return "ไม่พบหัวข้อองค์ความรู้ที่เลือก";
+  await run("DELETE FROM km_article WHERE id = ?", id);
   return null;
 }

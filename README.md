@@ -6,13 +6,27 @@
 
 ## เริ่มใช้งาน
 
+ต้องมีฐานข้อมูล Postgres ก่อน (โปรเจกต์นี้ใช้ [Neon](https://neon.tech)) แล้วใส่ connection string
+ไว้ใน `.env.local` ที่รากโปรเจกต์ — ไฟล์นี้อยู่ใน `.gitignore` ห้าม commit
+
+```bash
+# .env.local
+DATABASE_URL="postgresql://USER:PASSWORD@HOST/DBNAME?sslmode=require"
+```
+
 ```bash
 npm install
-npm run db:seed     # สร้างฐานข้อมูลพร้อมข้อมูลตั้งต้น (data/raot-sm.db)
+npm run db:seed     # สร้างตารางพร้อมข้อมูลตั้งต้นบน Postgres
 npm run dev         # เปิด http://localhost:3001
 ```
 
-> `npm run db:seed` จะ **ลบฐานข้อมูลเดิมทิ้งแล้วสร้างใหม่** ทุกครั้ง
+> `npm run db:seed` จะ **DROP ตารางเดิมทั้งหมดแล้วสร้างใหม่** ทุกครั้ง
+
+### Deploy บน Vercel
+
+ตั้ง `DATABASE_URL` ที่ Project Settings > Environment Variables ให้ครบทั้งสาม environment
+(Production / Preview / Development) แล้ว redeploy — ถ้าไม่ตั้ง ทุกหน้าจะขึ้น 500
+เพราะเปิดฐานข้อมูลไม่ได้
 
 ## ผู้ใช้ทดสอบ
 
@@ -63,7 +77,8 @@ npm run dev         # เปิด http://localhost:3001
 
 - **Next.js 15 (App Router) + React 19 + TypeScript**
 - **Tailwind CSS v4** — ธีมสีเขียว กยท. กำหนดที่ [app/globals.css](app/globals.css)
-- **SQLite ผ่าน `node:sqlite`** (โมดูลในตัวของ Node 24) ไม่ต้องติดตั้ง native module หรือ DB server
+- **Neon Postgres ผ่าน `@neondatabase/serverless`** (HTTP driver) — เดิมเป็น SQLite แบบไฟล์
+  ผ่าน `node:sqlite` แต่รันบน Vercel ไม่ได้เพราะ serverless เขียนดิสก์ไม่ได้
 
 ## โครงสร้างที่ควรรู้
 
@@ -78,7 +93,7 @@ npm run dev         # เปิด http://localhost:3001
 | [lib/dashboard.ts](lib/dashboard.ts) | ตัวเลขสรุปของหน้า HOME — รวมข้อมูลจากทุกเมนูโดยไม่ให้กรอกซ้ำ |
 | [lib/criteria.ts](lib/criteria.ts) | เนื้อหาเกณฑ์ที่แสดงใน modal MESSAGE เมื่อคลิกชื่อฟิลด์ |
 | [lib/schema.sql](lib/schema.sql) | โครงสร้างฐานข้อมูล |
-| [lib/seed.ts](lib/seed.ts) | ข้อมูลตั้งต้น (ส่วนงาน, กลุ่ม stakeholder, ตารางอ้างอิง, ตัวอย่าง) |
+| [lib/seed.mts](lib/seed.mts) | ข้อมูลตั้งต้น (ส่วนงาน, กลุ่ม stakeholder, ตารางอ้างอิง, ตัวอย่าง) |
 | [components/PlanForm.tsx](components/PlanForm.tsx) | ฟอร์มแผนงาน ใช้ร่วมกันทั้ง [040] และ [050] |
 | [components/QuarterResultForm.tsx](components/QuarterResultForm.tsx) | ฟอร์มผลไตรมาส ใช้ร่วมกันทั้ง 8 หน้า |
 | [components/RaotLogo.tsx](components/RaotLogo.tsx) | ตราสัญลักษณ์ กยท. (`variant="emblem"` สำหรับแถบเมนู, `"full"` พร้อมชื่อองค์กร) |
@@ -116,7 +131,7 @@ npm start         # รัน production build
 
 ## กลุ่มผู้มีส่วนได้ส่วนเสีย 8 กลุ่ม
 
-ชื่อกลุ่ม กลุ่มย่อย และนิยาม ใช้ตามที่ กยท. กำหนด กำหนดค่าไว้ที่ [lib/seed.ts](lib/seed.ts) จุดเดียว
+ชื่อกลุ่ม กลุ่มย่อย และนิยาม ใช้ตามที่ กยท. กำหนด กำหนดค่าไว้ที่ [lib/seed.mts](lib/seed.mts) จุดเดียว
 
 | กลุ่ม | กลุ่มย่อย |
 | --- | --- |
@@ -146,7 +161,7 @@ npm start         # รัน production build
 ```
 
 > **ยังต้องเติมชื่อเต็ม** — ที่ กยท. ส่งมาเป็นตัวย่อ ระบบจึงแสดงตัวย่อไปก่อน
-> เมื่อได้ชื่อเต็มแล้ว แก้ที่ช่องชื่อของแต่ละแถวใน [lib/seed.ts](lib/seed.ts) แล้วรัน `npm run db:seed` ใหม่
+> เมื่อได้ชื่อเต็มแล้ว แก้ที่ช่องชื่อของแต่ละแถวใน [lib/seed.mts](lib/seed.mts) แล้วรัน `npm run db:seed` ใหม่
 > ทุกหน้าจอจะเปลี่ยนตาม ไม่ต้องแก้ที่อื่น
 
 โครงสร้างเป็นรายการแบน ไม่มีสายงานคั่น (`parent_id` = null ทุกแถว)

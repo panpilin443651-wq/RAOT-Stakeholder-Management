@@ -1,4 +1,4 @@
-import { bind, bindInt, nowIso, run, get } from "@/lib/db";
+import { bind, bindInt, nowIso, run, get, insertId } from "@/lib/db";
 import { calcRiskLevel, requiresRiskControl } from "@/lib/scoring";
 
 export type PlanPayload = {
@@ -59,7 +59,7 @@ const COLUMNS = [
   "status", "updated_at", "updated_by",
 ];
 
-export function savePlan(payload: PlanPayload, status: string, username: string): number {
+export async function savePlan(payload: PlanPayload, status: string, username: string): Promise<number> {
   const riskLevel = calcRiskLevel(payload.impact ?? null, payload.likelihood ?? null);
   const values = [
     bind(payload.scope), bindInt(payload.fiscal_year_id), bindInt(payload.org_unit_id),
@@ -78,12 +78,15 @@ export function savePlan(payload: PlanPayload, status: string, username: string)
   ];
 
   if (payload.id) {
-    run(`UPDATE plan SET ${COLUMNS.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`, ...values, payload.id);
+    await run(
+      `UPDATE plan SET ${COLUMNS.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`,
+      ...values,
+      payload.id,
+    );
     return payload.id;
   }
-  run(
+  return insertId(
     `INSERT INTO plan (${COLUMNS.join(", ")}) VALUES (${COLUMNS.map(() => "?").join(", ")})`,
     ...values,
   );
-  return Number(get<{ id: number }>("SELECT last_insert_rowid() AS id")!.id);
 }

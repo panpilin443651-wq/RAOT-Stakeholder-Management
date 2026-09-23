@@ -14,6 +14,6 @@ export async function POST(request: Request) {
   const error = validateKm(payload);
   if (error) return NextResponse.json({ error }, { status: 400 });
 
-  const id = saveKm({ ...payload, id: undefined }, user.username);
+  const id = await saveKm({ ...payload, id: undefined }, user.username);
   return NextResponse.json({ ok: true, id });
 }

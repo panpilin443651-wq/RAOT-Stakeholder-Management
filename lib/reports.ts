@@ -33,7 +33,7 @@ function scopeConditions(alias: string, filters: Filters, params: unknown[]): st
   return where.length ? `AND ${where.join(" AND ")}` : "";
 }
 
-export function buildReport(code: ReportCode, filters: Filters): ReportData {
+export async function buildReport(code: ReportCode, filters: Filters): Promise<ReportData> {
   const title = findMenuItem(code)?.label ?? `รายงาน [${code}]`;
   const params: unknown[] = [];
 
@@ -41,7 +41,7 @@ export function buildReport(code: ReportCode, filters: Filters): ReportData {
     /* -------- [804] ข้อมูลผู้มีส่วนได้ส่วนเสีย ทั้งหมด -------- */
     case "804": {
       const clause = scopeConditions("s", filters, params);
-      const rows = all<ReportRow>(
+      const rows = await all<ReportRow>(
         `SELECT s.name AS stakeholder, g1.name AS group_name, g2.name AS subgroup,
                 o.name AS org_unit, s.interest_x, s.influence_y, s.zone,
                 s.coord_name, s.dm_name,
@@ -76,7 +76,7 @@ export function buildReport(code: ReportCode, filters: Filters): ReportData {
     /* -------- [805] วัตถุประสงค์ ขอบเขต ระดับส่วนงาน -------- */
     case "805": {
       const clause = scopeConditions("e", filters, params);
-      const rows = all<ReportRow>(
+      const rows = await all<ReportRow>(
         `SELECT o.name AS org_unit, f.year AS fiscal_year, e.objective, e.scope_text,
                 e.expected_result, e.status
            FROM engagement_objective e
@@ -104,7 +104,7 @@ export function buildReport(code: ReportCode, filters: Filters): ReportData {
     case "808": {
       const scope = code === "806" ? "ORG" : "UNIT";
       const clause = scopeConditions("p", filters, params);
-      const rows = all<ReportRow>(
+      const rows = await all<ReportRow>(
         `SELECT p.name AS plan_name, o.name AS org_unit, s.name AS stakeholder,
                 p.relation_level, p.relation_method,
                 p.goal_output, p.goal_outcome,
@@ -142,7 +142,7 @@ export function buildReport(code: ReportCode, filters: Filters): ReportData {
     case "809": {
       const scope = code === "807" ? "ORG" : "UNIT";
       const clause = scopeConditions("p", filters, params);
-      const rows = all<ReportRow>(
+      const rows = await all<ReportRow>(
         `SELECT p.name AS plan_name, o.name AS org_unit, r.quarter,
                 r.month1, r.month2, r.month3, r.forecast,
                 r.cumulative_percent, r.problem, r.solution,
@@ -182,7 +182,7 @@ export function buildReport(code: ReportCode, filters: Filters): ReportData {
     /* -------- [810] ความต้องการความคาดหวัง -------- */
     case "810": {
       const clause = scopeConditions("e", filters, params);
-      const rows = all<ReportRow>(
+      const rows = await all<ReportRow>(
         `SELECT s.name AS stakeholder, g.name AS group_name, o.name AS org_unit,
                 e.need, e.expectation, e.channel, e.response, e.status
            FROM expectation e

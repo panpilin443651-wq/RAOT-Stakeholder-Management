@@ -19,17 +19,17 @@ export default async function ObjectiveScreen({
   const user = await requireUser();
   const params = await searchParams;
 
-  const fiscalYearId = Number(params.fy) || currentFiscalYearRow().id;
+  const fiscalYearId = Number(params.fy) || (await currentFiscalYearRow()).id;
   // ผู้บันทึกข้อมูลถูกล็อกไว้ที่ส่วนงานตัวเอง เปลี่ยนผ่าน URL ไม่ได้
   const orgUnitId = scopedOrgUnitId(user) ?? (Number(params.unit) || user.org_unit_id);
 
   return (
     <ObjectiveForm
       scope={scope}
-      record={getObjective(scope, fiscalYearId, orgUnitId) ?? null}
-      years={listFiscalYears()}
-      units={selectableUnits(user, listOrgUnits())}
-      groups={listGroups(1)}
+      record={await getObjective(scope, fiscalYearId, orgUnitId) ?? null}
+      years={await listFiscalYears()}
+      units={selectableUnits(user, await listOrgUnits())}
+      groups={await listGroups(1)}
       selected={{ fiscalYearId, orgUnitId }}
       canApprove={canApprove(user.role)}
     />

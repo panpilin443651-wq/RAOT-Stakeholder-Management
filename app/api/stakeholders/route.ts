@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: NO_UNIT_PERMISSION }, { status: 403 });
   }
   if (payload.id) {
-    const denied = checkRecordUnit(user, "stakeholder", payload.id);
+    const denied = await checkRecordUnit(user, "stakeholder", payload.id);
     if (denied) return NextResponse.json({ error: denied.error }, { status: denied.status });
   }
 
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
   const status = payload.action === "approve" ? "APPROVED" : "DRAFT";
   const zone = calcZone(payload.interest_x ?? null, payload.influence_y ?? null);
-  const id = saveStakeholder(payload, status, zone, user.username);
+  const id = await saveStakeholder(payload, status, zone, user.username);
 
   return NextResponse.json({ ok: true, id });
 }

@@ -24,17 +24,17 @@ export default async function HomePage({
 
   // ค่าตั้งต้นคือปีปัจจุบันที่ผู้ดูแลระบบกำหนด — ใช้ร่วมกันทุกคน
   // ผู้ใช้เปลี่ยนปีเพื่อดูย้อนหลังได้ผ่าน ?fy=
-  const years = listFiscalYears();
-  const fy = years.find((y) => y.id === Number(params.fy)) ?? currentFiscalYearRow();
+  const years = await listFiscalYears();
+  const fy = years.find((y) => y.id === Number(params.fy)) ?? await currentFiscalYearRow();
 
   // ผู้บันทึกข้อมูลเห็นตัวเลขของส่วนงานตัวเองเท่านั้น
   const unitId = user ? scopedOrgUnitId(user) : undefined;
 
-  const groups = groupStats(fy.id, unitId);
-  const zones = zoneDistribution(fy.id, unitId);
-  const issues = issueDistribution(fy.id, unitId);
-  const plans = planProgress(fy.id, unitId);
-  const todo = user ? todoForUnit(fy.id, user.org_unit_id) : [];
+  const groups = await groupStats(fy.id, unitId);
+  const zones = await zoneDistribution(fy.id, unitId);
+  const issues = await issueDistribution(fy.id, unitId);
+  const plans = await planProgress(fy.id, unitId);
+  const todo = user ? await todoForUnit(fy.id, user.org_unit_id) : [];
 
   const totalStakeholders = groups.reduce((s, g) => s + g.stakeholders, 0);
   const groupsCovered = groups.filter((g) => g.stakeholders > 0).length;

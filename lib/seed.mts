@@ -1,24 +1,102 @@
 /**
  * สร้าง/รีเซ็ตฐานข้อมูลตั้งต้น  ->  npm run db:seed
- * ไฟล์นี้ทำงานแบบ standalone ด้วย node (type stripping) จึงไม่ import โมดูลอื่นในโปรเจกต์
+ *
+ * ไฟล์นี้ทำงานแบบ standalone ด้วย node (type stripping) จึงไม่ import โมดูลในโปรเจกต์
+ * (path alias @/... ใช้ไม่ได้นอก Next.js) นำเข้าได้แค่แพ็กเกจจริงกับโมดูลของ node
+ *
+ * นามสกุล .mts เพื่อให้เป็น ESM — จำเป็นเพราะไฟล์นี้ใช้ top-level await
+ *
+ * คำสั่ง INSERT ทั้งหมดถูกเก็บเข้าคิวก่อน แล้วส่งไปทีเดียวตอนท้ายตามลำดับเดิม
+ * ลำดับสำคัญเพราะมี foreign key ผูกกันอยู่
  */
-import { DatabaseSync } from "node:sqlite";
+import { neon } from "@neondatabase/serverless";
 import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const dbDir = path.join(root, "data");
-const dbPath = path.join(dbDir, "raot-sm.db");
 
-fs.mkdirSync(dbDir, { recursive: true });
-if (fs.existsSync(dbPath)) fs.rmSync(dbPath);
+/** อ่าน DATABASE_URL จาก environment หรือจาก .env.local (ไฟล์นี้รันนอก Next.js จึงไม่มีการโหลดให้) */
+function databaseUrl(): string {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  const envPath = path.join(root, ".env.local");
+  if (fs.existsSync(envPath)) {
+    const match = fs.readFileSync(envPath, "utf8").match(/^\s*DATABASE_URL\s*=\s*"?([^"\n\r]+)"?/m);
+    if (match) return match[1].trim();
+  }
+  throw new Error("ไม่พบ DATABASE_URL — ใส่ใน .env.local หรือส่งมาทาง environment");
+}
 
-const db = new DatabaseSync(dbPath);
-db.exec("PRAGMA foreign_keys = ON;");
-db.exec(fs.readFileSync(path.join(root, "lib", "schema.sql"), "utf8"));
-
+const sql = neon(databaseUrl());
 const now = new Date().toISOString();
-const ins = (sql: string) => db.prepare(sql);
+
+/** ตารางทั้งหมด เรียงจากตารางลูกไปตารางแม่ เพื่อ DROP ได้โดยไม่ติด foreign key */
+const TABLES = [
+  "stakeholder_issue",
+  "plan_quarter_result",
+  "expectation",
+  "plan",
+  "engagement_objective",
+  "stakeholder",
+  "km_article",
+  "ref_engagement_level",
+  "ref_risk_rm",
+  "ref_risk_ba",
+  "stakeholder_group",
+  "fiscal_year",
+  "app_user",
+  "org_unit",
+];
+
+console.log("ล้างตารางเดิม...");
+await sql.query(`DROP TABLE IF EXISTS ${TABLES.join(", ")} CASCADE`, []);
+
+console.log("สร้างสคีมา...");
+// HTTP driver รับคำสั่งเดียวต่อ request จึงต้องแยกตาม ; เอง
+// สคีมาไม่มี ; อยู่ในสตริงหรือ dollar-quoted block จึงแยกแบบนี้ได้ปลอดภัย
+const schema = fs.readFileSync(path.join(root, "lib", "schema.sql"), "utf8");
+for (const statement of schema.split(";").map((s) => s.trim()).filter(Boolean)) {
+  await sql.query(statement, []);
+}
+
+/**
+ * แปลง placeholder ? ของ SQLite เป็น $1..$n ของ Postgres
+ * เพื่อให้คำสั่ง INSERT ด้านล่างไม่ต้องแก้เลย
+ */
+function toPositional(text: string): string {
+  let index = 0;
+  return text.replace(/\?/g, () => `$${(index += 1)}`);
+}
+
+type Queued = { sql: string; args: unknown[] };
+const queue: Queued[] = [];
+
+/** คืนอ็อบเจกต์หน้าตาเหมือน prepared statement เดิม แต่เก็บเข้าคิวแทนการยิงทันที */
+const ins = (text: string) => ({
+  run: (...args: unknown[]) => {
+    queue.push({ sql: toPositional(text), args });
+  },
+});
+
+/** node:sqlite เดิมไม่รับ undefined/boolean — Postgres ก็เหมือนกัน แปลงให้ก่อนส่ง */
+function normalise(value: unknown): unknown {
+  if (value === undefined) return null;
+  if (typeof value === "boolean") return value ? 1 : 0;
+  return value;
+}
+
+async function flush(): Promise<void> {
+  console.log(`ส่งข้อมูล ${queue.length} คำสั่ง...`);
+  for (const item of queue) {
+    try {
+      await sql.query(item.sql, item.args.map(normalise) as never[]);
+    } catch (e) {
+      console.error("คำสั่งที่ล้มเหลว:", item.sql);
+      console.error("ค่าที่ส่ง:", item.args);
+      throw e;
+    }
+  }
+  queue.length = 0;
+}
 
 /* ---------------- ส่วนงานและหน่วยงานที่ไม่สังกัดส่วนงาน ของ กยท. รวม 30 ส่วนงาน ---------------
  * กยท. ส่งรายชื่อมาเป็นตัวย่อ จึงบันทึกตัวย่อเป็นทั้งรหัสและชื่อที่แสดงบนหน้าจอ
@@ -248,9 +326,16 @@ const groupStmt = ins(
   "INSERT INTO stakeholder_group (id, level, parent_id, code, name, definition, icon, sort_order) VALUES (?,?,?,?,?,?,?,?)",
 );
 let groupId = 0;
+/**
+ * เก็บ code -> id ไว้ตอนแทรกเลย
+ * เดิมโค้ดอ่านกลับจากฐานข้อมูลหลังแทรกเสร็จ แต่ id ถูกกำหนดเองอยู่แล้ว (++groupId)
+ * จึงสร้างแมปได้ตรงนี้ ทำให้ไม่ต้องหยุดรอ query กลางสคริปต์
+ */
+const groupIdByCode = new Map<string, number>();
 function insertGroups(list: Group[], level: number, parentId: number | null) {
   list.forEach((g, index) => {
     const id = ++groupId;
+    groupIdByCode.set(g.code, id);
     groupStmt.run(id, level, parentId, g.code, g.name, g.definition ?? null, g.icon ?? null, index);
     if (g.children) insertGroups(g.children, level + 1, id);
   });
@@ -407,13 +492,6 @@ for (const [title, summary, category, body, daysAgo] of km) {
 }
 
 /* ---------------- ข้อมูลตัวอย่าง --------------- */
-const groupIdByCode = new Map<string, number>();
-for (const row of db.prepare("SELECT id, code FROM stakeholder_group").all() as {
-  id: number;
-  code: string;
-}[]) {
-  groupIdByCode.set(row.code, row.id);
-}
 const g = (code: string) => groupIdByCode.get(code) ?? null;
 
 const shStmt = ins(
@@ -710,5 +788,48 @@ objStmt.run(
   "APPROVED", now, "kanya",
 );
 
-db.close();
-console.log("seed เรียบร้อย ->", dbPath);
+await flush();
+
+/**
+ * ข้อมูลตั้งต้นถูกแทรกด้วย id ที่กำหนดเอง ซึ่งไม่ทำให้ sequence ของ IDENTITY ขยับตาม
+ * ถ้าไม่เลื่อน sequence การกดเพิ่มข้อมูลจากหน้าเว็บครั้งแรกจะชน primary key ทันที
+ * ตั้งด้วย is_called = false เพื่อให้ nextval ครั้งถัดไปคืนค่า MAX(id) + 1 พอดี
+ */
+const IDENTITY_TABLES = [
+  "org_unit",
+  "app_user",
+  "fiscal_year",
+  "stakeholder_group",
+  "stakeholder",
+  "stakeholder_issue",
+  "engagement_objective",
+  "plan",
+  "plan_quarter_result",
+  "expectation",
+  "km_article",
+];
+
+console.log("เลื่อน sequence ให้ตรงกับ id สูงสุด...");
+for (const table of IDENTITY_TABLES) {
+  await sql.query(
+    `SELECT setval(
+       pg_get_serial_sequence('${table}', 'id'),
+       COALESCE((SELECT MAX(id) FROM ${table}), 0) + 1,
+       false
+     )`,
+    [],
+  );
+}
+
+const counts = await sql.query(
+  `SELECT 'org_unit' AS t, COUNT(*)::int AS n FROM org_unit
+   UNION ALL SELECT 'app_user', COUNT(*)::int FROM app_user
+   UNION ALL SELECT 'stakeholder_group', COUNT(*)::int FROM stakeholder_group
+   UNION ALL SELECT 'stakeholder', COUNT(*)::int FROM stakeholder
+   UNION ALL SELECT 'plan', COUNT(*)::int FROM plan
+   UNION ALL SELECT 'plan_quarter_result', COUNT(*)::int FROM plan_quarter_result
+   UNION ALL SELECT 'expectation', COUNT(*)::int FROM expectation
+   UNION ALL SELECT 'km_article', COUNT(*)::int FROM km_article`,
+  [],
+);
+console.log("seed เรียบร้อย:", (counts as { t: string; n: number }[]).map((r) => `${r.t}=${r.n}`).join(" "));

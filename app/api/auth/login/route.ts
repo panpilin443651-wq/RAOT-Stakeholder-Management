@@ -3,7 +3,7 @@ import { findUser, SESSION_COOKIE } from "@/lib/auth";
 
 export async function POST(request: Request) {
   const { username } = (await request.json()) as { username?: string };
-  if (!username || !findUser(username)) {
+  if (!username || !await findUser(username)) {
     return NextResponse.json({ error: "ไม่พบผู้ใช้งาน" }, { status: 400 });
   }
   const response = NextResponse.json({ ok: true });

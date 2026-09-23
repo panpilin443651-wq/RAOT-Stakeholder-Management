@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: NO_UNIT_PERMISSION }, { status: 403 });
   }
   if (payload.id) {
-    const denied = checkRecordUnit(user, "plan", payload.id);
+    const denied = await checkRecordUnit(user, "plan", payload.id);
     if (denied) return NextResponse.json({ error: denied.error }, { status: denied.status });
   }
 
@@ -25,6 +25,6 @@ export async function POST(request: Request) {
   }
 
   const status = payload.action === "approve" ? "APPROVED" : "DRAFT";
-  const id = savePlan(payload, status, user.username);
+  const id = await savePlan(payload, status, user.username);
   return NextResponse.json({ ok: true, id });
 }

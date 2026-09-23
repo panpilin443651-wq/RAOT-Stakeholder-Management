@@ -23,22 +23,22 @@ export default async function ProfileListPage({
 }) {
   const user = await requireUser();
   const params = await searchParams;
-  const years = listFiscalYears();
-  const units = selectableUnits(user, listOrgUnits());
-  const groups = listGroups(1);
-  const fiscalYearId = Number(params.fy) || currentFiscalYearRow().id;
+  const years = await listFiscalYears();
+  const units = selectableUnits(user, await listOrgUnits());
+  const groups = await listGroups(1);
+  const fiscalYearId = Number(params.fy) || (await currentFiscalYearRow()).id;
 
   // ผู้บันทึกข้อมูลถูกล็อกไว้ที่ส่วนงานตัวเอง ตัวกรองส่วนงานจาก URL จึงใช้ไม่ได้
   const lockedUnitId = scopedOrgUnitId(user);
 
-  const rows = listStakeholders({
+  const rows = (await listStakeholders({
     fiscalYearId,
     orgUnitId: lockedUnitId ?? (Number(params.unit) || undefined),
     groupL1Id: Number(params.group) || undefined,
     q: params.q || undefined,
-  }).filter((row) => (params.zone ? row.zone === Number(params.zone) : true));
+  })).filter((row) => (params.zone ? row.zone === Number(params.zone) : true));
 
-  const issues = issuesByStakeholder(rows.map((row) => row.id));
+  const issues = await issuesByStakeholder(rows.map((row) => row.id));
 
   return (
     <FormCard

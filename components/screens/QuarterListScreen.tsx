@@ -26,9 +26,17 @@ export default async function QuarterListScreen({
 
   const code = `0${scope === "ORG" ? "4" : "5"}1${quarter}`;
   const base = scope === "ORG" ? "/organization" : "/cluster";
-  const years = listFiscalYears();
-  const fiscalYearId = years.find((y) => y.id === Number(query.fy))?.id ?? currentFiscalYearRow().id;
-  const plans = listPlans(scope, { fiscalYearId, orgUnitId: scopedOrgUnitId(user) });
+  const years = await listFiscalYears();
+  const fiscalYearId = years.find((y) => y.id === Number(query.fy))?.id ?? (await currentFiscalYearRow()).id;
+  const plans = await listPlans(scope, { fiscalYearId, orgUnitId: scopedOrgUnitId(user) });
+
+  // ดึงผลไตรมาสของทุกแผนมาไว้ก่อนเรนเดอร์ เพราะใน .map() ของ JSX await ไม่ได้
+  // และการยิงทีละแผนในลูปก็เป็น N+1 query
+  const resultsByPlan = new Map(
+    await Promise.all(
+      plans.map(async (plan) => [plan.id, await listQuarterResults(plan.id)] as const),
+    ),
+  );
 
   return (
     <FormCard
@@ -62,7 +70,7 @@ export default async function QuarterListScreen({
               </tr>
             )}
             {plans.map((plan, index) => {
-              const result = listQuarterResults(plan.id).find((r) => r.quarter === quarter);
+              const result = resultsByPlan.get(plan.id)?.find((r) => r.quarter === quarter);
               return (
                 <tr key={plan.id} className="odd:bg-white even:bg-raot-50/40 hover:bg-raot-100/60">
                   <Td className="text-center">{index + 1}</Td>

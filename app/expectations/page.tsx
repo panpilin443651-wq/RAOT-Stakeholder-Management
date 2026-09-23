@@ -13,8 +13,8 @@ export default async function ExpectationPage({
 }) {
   const user = await requireUser();
   const params = await searchParams;
-  const years = listFiscalYears();
-  const fy = years.find((y) => y.id === Number(params.fy)) ?? currentFiscalYearRow();
+  const years = await listFiscalYears();
+  const fy = years.find((y) => y.id === Number(params.fy)) ?? await currentFiscalYearRow();
   const lockedUnitId = scopedOrgUnitId(user);
 
   return (
@@ -26,8 +26,8 @@ export default async function ExpectationPage({
       {isUnitScoped(user.role) && <UnitScopeNote unitName={user.org_unit_name} />}
 
       <ExpectationManager
-        rows={listExpectations({ fiscalYearId: fy.id, orgUnitId: lockedUnitId })}
-        stakeholders={listStakeholders({ fiscalYearId: fy.id, orgUnitId: lockedUnitId })}
+        rows={await listExpectations({ fiscalYearId: fy.id, orgUnitId: lockedUnitId })}
+        stakeholders={await listStakeholders({ fiscalYearId: fy.id, orgUnitId: lockedUnitId })}
         fiscalYearId={fy.id}
         orgUnitId={user.org_unit_id}
         canApprove={canApprove(user.role)}

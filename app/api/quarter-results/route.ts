@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
   const payload = (await request.json()) as QuarterResultPayload;
   // ผลไตรมาสเป็นของส่วนงานเดียวกับแผนงานแม่
-  const ownerUnit = planOwnerUnit(payload.plan_id);
+  const ownerUnit = await planOwnerUnit(payload.plan_id);
   if (ownerUnit === undefined) {
     return NextResponse.json({ error: "ไม่พบแผนงาน/โครงการที่อ้างถึง" }, { status: 404 });
   }
@@ -29,6 +29,6 @@ export async function POST(request: Request) {
   }
 
   const status = payload.action === "approve" ? "APPROVED" : "DRAFT";
-  const id = saveQuarterResult(payload, status, user.username);
+  const id = await saveQuarterResult(payload, status, user.username);
   return NextResponse.json({ ok: true, id });
 }

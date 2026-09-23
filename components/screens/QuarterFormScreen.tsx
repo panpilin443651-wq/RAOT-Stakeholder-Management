@@ -17,7 +17,7 @@ export default async function QuarterFormScreen({
   const quarter = Number(q);
   if (!isQuarter(quarter)) notFound();
 
-  const plan = getPlan(Number(planId));
+  const plan = await getPlan(Number(planId));
   if (!plan || plan.scope !== scope) notFound();
   // ผลไตรมาสเป็นของส่วนงานเดียวกับแผนงานแม่
   if (!canEditOrgUnit(user, plan.org_unit_id)) notFound();
@@ -27,8 +27,8 @@ export default async function QuarterFormScreen({
       scope={scope}
       quarter={quarter}
       plan={plan}
-      record={getQuarterResult(plan.id, quarter) ?? null}
-      previousSummary={previousQuartersSummary(plan.id, quarter)}
+      record={await getQuarterResult(plan.id, quarter) ?? null}
+      previousSummary={await previousQuartersSummary(plan.id, quarter)}
       canApprove={canApprove(user.role)}
     />
   );

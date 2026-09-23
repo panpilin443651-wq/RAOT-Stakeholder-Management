@@ -6,3 +6,8 @@ next-env.d.ts
 
 # Source reference document (not published)
 *.pdf
+
+# Secrets — never commit
+.env
+.env.local
+.env*.local

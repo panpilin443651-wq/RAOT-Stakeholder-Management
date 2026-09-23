@@ -8,9 +8,9 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบ" }, { status: 401 });
 
   const { id } = await context.params;
-  const denied = checkRecordUnit(user, "expectation", Number(id));
+  const denied = await checkRecordUnit(user, "expectation", Number(id));
   if (denied) return NextResponse.json({ error: denied.error }, { status: denied.status });
 
-  run("DELETE FROM expectation WHERE id = ?", Number(id));
+  await run("DELETE FROM expectation WHERE id = ?", Number(id));
   return NextResponse.json({ ok: true });
 }

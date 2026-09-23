@@ -149,40 +149,40 @@ export type Expectation = {
 };
 
 /* ---------------- master ---------------- */
-export const listOrgUnits = () =>
-  all<OrgUnit>("SELECT id, code, name, parent_id FROM org_unit ORDER BY id");
+export const listOrgUnits = async () =>
+  await all<OrgUnit>("SELECT id, code, name, parent_id FROM org_unit ORDER BY id");
 
-export const listFiscalYears = () =>
-  all<FiscalYear>("SELECT id, year, start_month, is_current FROM fiscal_year ORDER BY year DESC");
+export const listFiscalYears = async () =>
+  await all<FiscalYear>("SELECT id, year, start_month, is_current FROM fiscal_year ORDER BY year DESC");
 
-export function currentFiscalYearRow(): FiscalYear {
+export async function currentFiscalYearRow(): Promise<FiscalYear> {
   return (
-    get<FiscalYear>("SELECT id, year, start_month, is_current FROM fiscal_year WHERE is_current = 1") ??
-    all<FiscalYear>("SELECT id, year, start_month, is_current FROM fiscal_year ORDER BY year DESC")[0]
+    await get<FiscalYear>("SELECT id, year, start_month, is_current FROM fiscal_year WHERE is_current = 1") ??
+    (await all<FiscalYear>("SELECT id, year, start_month, is_current FROM fiscal_year ORDER BY year DESC"))[0]
   );
 }
 
-export const listGroups = (level: number, parentId?: number | null) =>
+export const listGroups = async (level: number, parentId?: number | null) =>
   parentId === undefined
-    ? all<Group>(
+    ? await all<Group>(
         "SELECT id, level, parent_id, code, name FROM stakeholder_group WHERE level = ? ORDER BY sort_order, code",
         level,
       )
-    : all<Group>(
+    : await all<Group>(
         "SELECT id, level, parent_id, code, name FROM stakeholder_group WHERE level = ? AND parent_id IS ? ORDER BY sort_order, code",
         level,
         parentId,
       );
 
-export const listAllGroups = () =>
-  all<Group>("SELECT id, level, parent_id, code, name FROM stakeholder_group ORDER BY level, sort_order, code");
+export const listAllGroups = async () =>
+  await all<Group>("SELECT id, level, parent_id, code, name FROM stakeholder_group ORDER BY level, sort_order, code");
 
-export const listRiskRm = () =>
-  all<RefItem>("SELECT code, name FROM ref_risk_rm ORDER BY sort_order, code");
-export const listRiskBa = () =>
-  all<RefItem>("SELECT code, name FROM ref_risk_ba ORDER BY sort_order, code");
-export const listLevels = () =>
-  all<RefItem>("SELECT code, name FROM ref_engagement_level ORDER BY sort_order, code");
+export const listRiskRm = async () =>
+  await all<RefItem>("SELECT code, name FROM ref_risk_rm ORDER BY sort_order, code");
+export const listRiskBa = async () =>
+  await all<RefItem>("SELECT code, name FROM ref_risk_ba ORDER BY sort_order, code");
+export const listLevels = async () =>
+  await all<RefItem>("SELECT code, name FROM ref_engagement_level ORDER BY sort_order, code");
 
 /* ---------------- stakeholder ---------------- */
 export type StakeholderRow = Stakeholder & {
@@ -191,12 +191,12 @@ export type StakeholderRow = Stakeholder & {
   issue_count: number;
 };
 
-export function listStakeholders(filters: {
+export async function listStakeholders(filters: {
   fiscalYearId?: number;
   orgUnitId?: number;
   groupL1Id?: number;
   q?: string;
-} = {}): StakeholderRow[] {
+} = {}): Promise<StakeholderRow[]> {
   const where: string[] = [];
   const params: unknown[] = [];
   if (filters.fiscalYearId) {
@@ -215,7 +215,7 @@ export function listStakeholders(filters: {
     where.push("s.name LIKE ?");
     params.push(`%${filters.q}%`);
   }
-  return all<StakeholderRow>(
+  return await all<StakeholderRow>(
     `SELECT s.*, o.name AS org_unit_name,
             g.name AS group_name,
             (SELECT COUNT(*) FROM stakeholder_issue i WHERE i.stakeholder_id = s.id) AS issue_count
@@ -228,16 +228,16 @@ export function listStakeholders(filters: {
   );
 }
 
-export const getStakeholder = (id: number) =>
-  get<Stakeholder>("SELECT * FROM stakeholder WHERE id = ?", id);
+export const getStakeholder = async (id: number) =>
+  await get<Stakeholder>("SELECT * FROM stakeholder WHERE id = ?", id);
 
-export const listIssues = (stakeholderId: number) =>
-  all<Issue>("SELECT * FROM stakeholder_issue WHERE stakeholder_id = ? ORDER BY seq", stakeholderId);
+export const listIssues = async (stakeholderId: number) =>
+  await all<Issue>("SELECT * FROM stakeholder_issue WHERE stakeholder_id = ? ORDER BY seq", stakeholderId);
 
 /* ---------------- plan ---------------- */
 export type PlanRow = Plan & { org_unit_name: string; stakeholder_name: string | null };
 
-export function listPlans(scope: "ORG" | "UNIT", filters: { fiscalYearId?: number; orgUnitId?: number } = {}): PlanRow[] {
+export async function listPlans(scope: "ORG" | "UNIT", filters: { fiscalYearId?: number; orgUnitId?: number } = {}): Promise<PlanRow[]> {
   const where = ["p.scope = ?"];
   const params: unknown[] = [scope];
   if (filters.fiscalYearId) {
@@ -248,7 +248,7 @@ export function listPlans(scope: "ORG" | "UNIT", filters: { fiscalYearId?: numbe
     where.push("p.org_unit_id = ?");
     params.push(filters.orgUnitId);
   }
-  return all<PlanRow>(
+  return await all<PlanRow>(
     `SELECT p.*, o.name AS org_unit_name, s.name AS stakeholder_name
        FROM plan p
        JOIN org_unit o ON o.id = p.org_unit_id
@@ -259,7 +259,7 @@ export function listPlans(scope: "ORG" | "UNIT", filters: { fiscalYearId?: numbe
   );
 }
 
-export const getPlan = (id: number) => get<PlanRow>(
+export const getPlan = async (id: number) => await get<PlanRow>(
   `SELECT p.*, o.name AS org_unit_name, s.name AS stakeholder_name
      FROM plan p
      JOIN org_unit o ON o.id = p.org_unit_id
@@ -268,16 +268,16 @@ export const getPlan = (id: number) => get<PlanRow>(
   id,
 );
 
-export const getQuarterResult = (planId: number, quarter: number) =>
-  get<QuarterResult>("SELECT * FROM plan_quarter_result WHERE plan_id = ? AND quarter = ?", planId, quarter);
+export const getQuarterResult = async (planId: number, quarter: number) =>
+  await get<QuarterResult>("SELECT * FROM plan_quarter_result WHERE plan_id = ? AND quarter = ?", planId, quarter);
 
-export const listQuarterResults = (planId: number) =>
-  all<QuarterResult>("SELECT * FROM plan_quarter_result WHERE plan_id = ? ORDER BY quarter", planId);
+export const listQuarterResults = async (planId: number) =>
+  await all<QuarterResult>("SELECT * FROM plan_quarter_result WHERE plan_id = ? ORDER BY quarter", planId);
 
 /** ผลสะสมของไตรมาสก่อนหน้า ใช้แสดงในช่อง "ผลการดำเนินงาน ไตรมาสที่ N" (อ่านอย่างเดียว) */
-export function previousQuartersSummary(planId: number, quarter: number): string {
+export async function previousQuartersSummary(planId: number, quarter: number): Promise<string> {
   if (quarter <= 1) return "";
-  const rows = all<QuarterResult>(
+  const rows = await all<QuarterResult>(
     "SELECT * FROM plan_quarter_result WHERE plan_id = ? AND quarter < ? ORDER BY quarter",
     planId,
     quarter,
@@ -293,16 +293,16 @@ export function previousQuartersSummary(planId: number, quarter: number): string
 }
 
 /* ---------------- objective ---------------- */
-export const getObjective = (scope: "ORG" | "UNIT", fiscalYearId: number, orgUnitId: number) =>
-  get<EngagementObjective>(
+export const getObjective = async (scope: "ORG" | "UNIT", fiscalYearId: number, orgUnitId: number) =>
+  await get<EngagementObjective>(
     "SELECT * FROM engagement_objective WHERE scope = ? AND fiscal_year_id = ? AND org_unit_id = ?",
     scope,
     fiscalYearId,
     orgUnitId,
   );
 
-export const listObjectives = (scope: "ORG" | "UNIT", fiscalYearId?: number) =>
-  all<EngagementObjective & { org_unit_name: string }>(
+export const listObjectives = async (scope: "ORG" | "UNIT", fiscalYearId?: number) =>
+  await all<EngagementObjective & { org_unit_name: string }>(
     `SELECT e.*, o.name AS org_unit_name
        FROM engagement_objective e JOIN org_unit o ON o.id = e.org_unit_id
       WHERE e.scope = ?${fiscalYearId ? " AND e.fiscal_year_id = ?" : ""}
@@ -311,7 +311,7 @@ export const listObjectives = (scope: "ORG" | "UNIT", fiscalYearId?: number) =>
   );
 
 /* ---------------- expectation ---------------- */
-export const listExpectations = (filters: { fiscalYearId?: number; orgUnitId?: number } = {}) => {
+export const listExpectations = async (filters: { fiscalYearId?: number; orgUnitId?: number } = {}) => {
   const where: string[] = [];
   const params: unknown[] = [];
   if (filters.fiscalYearId) {
@@ -322,7 +322,7 @@ export const listExpectations = (filters: { fiscalYearId?: number; orgUnitId?: n
     where.push("e.org_unit_id = ?");
     params.push(filters.orgUnitId);
   }
-  return all<Expectation & { stakeholder_name: string; org_unit_name: string; group_name: string | null }>(
+  return await all<Expectation & { stakeholder_name: string; org_unit_name: string; group_name: string | null }>(
     `SELECT e.*, s.name AS stakeholder_name, o.name AS org_unit_name, g.name AS group_name
        FROM expectation e
        JOIN stakeholder s ON s.id = e.stakeholder_id
@@ -334,8 +334,8 @@ export const listExpectations = (filters: { fiscalYearId?: number; orgUnitId?: n
   );
 };
 
-export const getExpectation = (id: number) =>
-  get<Expectation>("SELECT * FROM expectation WHERE id = ?", id);
+export const getExpectation = async (id: number) =>
+  await get<Expectation>("SELECT * FROM expectation WHERE id = ?", id);
 
 /* ---------------- องค์ความรู้ ---------------- */
 export type KmArticle = {
@@ -353,7 +353,7 @@ export type KmArticle = {
 /** หัวเรื่ององค์ความรู้ (ไม่ดึงเนื้อหาเต็ม) เรียงตามวันที่บันทึกข้อมูลล่าสุดก่อน */
 export type KmSummary = Omit<KmArticle, "body">;
 
-export function listKmArticles(filters: { q?: string; category?: string } = {}): KmSummary[] {
+export async function listKmArticles(filters: { q?: string; category?: string } = {}): Promise<KmSummary[]> {
   const where: string[] = [];
   const params: unknown[] = [];
 
@@ -368,7 +368,7 @@ export function listKmArticles(filters: { q?: string; category?: string } = {}):
     params.push(filters.category.trim());
   }
 
-  return all<KmSummary>(
+  return await all<KmSummary>(
     `SELECT id, title, summary, category, created_at, created_by, updated_at, updated_by
        FROM km_article
        ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
@@ -377,21 +377,21 @@ export function listKmArticles(filters: { q?: string; category?: string } = {}):
   );
 }
 
-export const listKmCategories = () =>
-  all<{ category: string }>(
+export const listKmCategories = async () =>
+  (await all<{ category: string }>(
     "SELECT DISTINCT category FROM km_article WHERE category IS NOT NULL AND category <> '' ORDER BY category",
-  ).map((r) => r.category);
+  )).map((r) => r.category);
 
-export const getKmArticle = (id: number) =>
-  get<KmArticle>("SELECT * FROM km_article WHERE id = ?", id);
+export const getKmArticle = async (id: number) =>
+  await get<KmArticle>("SELECT * FROM km_article WHERE id = ?", id);
 
 /** ประเด็นความต้องการของผู้มีส่วนได้ส่วนเสียหลายรายพร้อมกัน (ใช้ในหน้าทะเบียนและรายงาน) */
-export function issuesByStakeholder(stakeholderIds: number[]): Map<number, Issue[]> {
+export async function issuesByStakeholder(stakeholderIds: number[]): Promise<Map<number, Issue[]>> {
   const grouped = new Map<number, Issue[]>();
   if (stakeholderIds.length === 0) return grouped;
 
   const placeholders = stakeholderIds.map(() => "?").join(",");
-  const rows = all<Issue>(
+  const rows = await all<Issue>(
     `SELECT * FROM stakeholder_issue WHERE stakeholder_id IN (${placeholders}) ORDER BY stakeholder_id, seq`,
     ...stakeholderIds,
   );

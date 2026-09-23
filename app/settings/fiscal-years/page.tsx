@@ -10,7 +10,7 @@ export default async function FiscalYearSettingsPage() {
   const user = await requireUser();
   if (!isAdmin(user.role)) redirect("/");
 
-  const rows = listFiscalYearsWithUsage();
+  const rows = await listFiscalYearsWithUsage();
   const latest = rows.reduce((max, r) => Math.max(max, r.year), 0);
 
   return (

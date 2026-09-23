@@ -11,7 +11,7 @@ export default async function KmArticlePage({ params }: { params: Promise<{ id: 
   const user = await requireUser();
   const { id } = await params;
 
-  const article = Number.isInteger(Number(id)) ? getKmArticle(Number(id)) : undefined;
+  const article = Number.isInteger(Number(id)) ? await getKmArticle(Number(id)) : undefined;
   if (!article) notFound();
 
   const fmt = (iso: string) =>
@@ -48,7 +48,7 @@ export default async function KmArticlePage({ params }: { params: Promise<{ id: 
 
       {isAdmin(user.role) && (
         <div className="mt-8 border-t border-[var(--line)] pt-4">
-          <KmArticleClient article={article} categories={listKmCategories()} />
+          <KmArticleClient article={article} categories={await listKmCategories()} />
         </div>
       )}
     </FormCard>

@@ -25,12 +25,12 @@ export type GroupStat = {
  * สถิติรายกลุ่มหลัก พร้อมกลุ่มย่อยและนิยาม ใช้ทั้งการ์ดนิยามและกราฟหน้าแรก
  * ส่ง orgUnitId มาเมื่อผู้ใช้เห็นได้เฉพาะส่วนงานตัวเอง
  */
-export function groupStats(fiscalYearId: number, orgUnitId?: number): GroupStat[] {
+export async function groupStats(fiscalYearId: number, orgUnitId?: number): Promise<GroupStat[]> {
   // เงื่อนไขนี้ต่อท้าย subquery ของทะเบียน จึงต้องส่งพารามิเตอร์คู่กันทุกครั้ง
   const unitFilter = orgUnitId ? " AND %s.org_unit_id = ?" : "";
   const unitParam = orgUnitId ? [orgUnitId] : [];
 
-  const mains = all<Omit<GroupStat, "subgroups">>(
+  const mains = await all<Omit<GroupStat, "subgroups">>(
     `SELECT g.id, g.code, g.name, g.icon, g.definition,
             (SELECT COUNT(*) FROM stakeholder s
               WHERE s.group_l1_id = g.id AND s.fiscal_year_id = ?${unitFilter.replace("%s", "s")}) AS stakeholders,
@@ -43,7 +43,7 @@ export function groupStats(fiscalYearId: number, orgUnitId?: number): GroupStat[
     fiscalYearId, ...unitParam, fiscalYearId, ...unitParam,
   );
 
-  const subs = all<SubGroup & { parent_id: number }>(
+  const subs = await all<SubGroup & { parent_id: number }>(
     `SELECT g.id, g.parent_id, g.code, g.name, g.definition,
             (SELECT COUNT(*) FROM stakeholder s
               WHERE s.group_l2_id = g.id AND s.fiscal_year_id = ?${unitFilter.replace("%s", "s")}) AS stakeholders
@@ -60,8 +60,8 @@ export function groupStats(fiscalYearId: number, orgUnitId?: number): GroupStat[
 }
 
 /** จำนวนผู้มีส่วนได้ส่วนเสียแยกตาม Zone (สีเดียวกับแผนผังลำดับความสำคัญ) */
-export function zoneDistribution(fiscalYearId: number, orgUnitId?: number) {
-  const rows = all<{ zone: number | null; n: number }>(
+export async function zoneDistribution(fiscalYearId: number, orgUnitId?: number) {
+  const rows = await all<{ zone: number | null; n: number }>(
     `SELECT zone, COUNT(*) AS n FROM stakeholder
       WHERE fiscal_year_id = ?${orgUnitId ? " AND org_unit_id = ?" : ""}
       GROUP BY zone`,
@@ -79,8 +79,8 @@ export function zoneDistribution(fiscalYearId: number, orgUnitId?: number) {
 }
 
 /** จำนวนประเด็นแยกตามระดับความสำคัญตามแผนผัง 4x4 */
-export function issueDistribution(fiscalYearId: number, orgUnitId?: number) {
-  const rows = all<{ impact_org: number | null; impact_stakeholder: number | null }>(
+export async function issueDistribution(fiscalYearId: number, orgUnitId?: number) {
+  const rows = await all<{ impact_org: number | null; impact_stakeholder: number | null }>(
     `SELECT i.impact_org, i.impact_stakeholder
        FROM stakeholder_issue i
        JOIN stakeholder s ON s.id = i.stakeholder_id
@@ -106,25 +106,25 @@ export function issueDistribution(fiscalYearId: number, orgUnitId?: number) {
 }
 
 /** ความคืบหน้าแผนงานและการบันทึกผลรายไตรมาส */
-export function planProgress(fiscalYearId: number, orgUnitId?: number) {
-  const n = (sql: string, ...p: unknown[]) => Number(get<{ n: number }>(sql, ...p)?.n ?? 0);
+export async function planProgress(fiscalYearId: number, orgUnitId?: number) {
+  const n = async (sql: string, ...p: unknown[]) => Number((await get<{ n: number }>(sql, ...p))?.n ?? 0);
   const unit = orgUnitId ? " AND %s.org_unit_id = ?" : "";
   const unitParam = orgUnitId ? [orgUnitId] : [];
 
-  const plans = n(
+  const plans = await n(
     `SELECT COUNT(*) AS n FROM plan WHERE fiscal_year_id = ?${unit.replace("%s.", "")}`,
     fiscalYearId, ...unitParam,
   );
-  const approvedPlans = n(
+  const approvedPlans = await n(
     `SELECT COUNT(*) AS n FROM plan WHERE fiscal_year_id = ? AND status = 'APPROVED'${unit.replace("%s.", "")}`,
     fiscalYearId, ...unitParam,
   );
-  const results = n(
+  const results = await n(
     `SELECT COUNT(*) AS n FROM plan_quarter_result r JOIN plan p ON p.id = r.plan_id
       WHERE p.fiscal_year_id = ?${unit.replace("%s", "p")}`,
     fiscalYearId, ...unitParam,
   );
-  const onTarget = n(
+  const onTarget = await n(
     `SELECT COUNT(*) AS n FROM plan_quarter_result r JOIN plan p ON p.id = r.plan_id
       WHERE p.fiscal_year_id = ? AND r.is_on_target = 1${unit.replace("%s", "p")}`,
     fiscalYearId, ...unitParam,
@@ -140,17 +140,17 @@ export function planProgress(fiscalYearId: number, orgUnitId?: number) {
 }
 
 /** งานที่ส่วนงานยังต้องทำในปีงบประมาณนี้ */
-export function todoForUnit(fiscalYearId: number, orgUnitId: number) {
+export async function todoForUnit(fiscalYearId: number, orgUnitId: number) {
   const todo: { label: string; href: string; count: number }[] = [];
-  const n = (sql: string, ...p: unknown[]) => Number(get<{ n: number }>(sql, ...p)?.n ?? 0);
+  const n = async (sql: string, ...p: unknown[]) => Number((await get<{ n: number }>(sql, ...p))?.n ?? 0);
 
-  const noZone = n(
+  const noZone = await n(
     "SELECT COUNT(*) AS n FROM stakeholder WHERE fiscal_year_id = ? AND org_unit_id = ? AND zone IS NULL",
     fiscalYearId, orgUnitId,
   );
   if (noZone) todo.push({ label: "ผู้มีส่วนได้ส่วนเสียที่ยังไม่ได้จัด Zone", href: "/profile", count: noZone });
 
-  const noIssue = n(
+  const noIssue = await n(
     `SELECT COUNT(*) AS n FROM stakeholder s
       WHERE s.fiscal_year_id = ? AND s.org_unit_id = ?
         AND NOT EXISTS (SELECT 1 FROM stakeholder_issue i WHERE i.stakeholder_id = s.id AND i.title IS NOT NULL)`,
@@ -158,13 +158,13 @@ export function todoForUnit(fiscalYearId: number, orgUnitId: number) {
   );
   if (noIssue) todo.push({ label: "ผู้มีส่วนได้ส่วนเสียที่ยังไม่ระบุประเด็นความต้องการ", href: "/profile", count: noIssue });
 
-  const draftPlans = n(
+  const draftPlans = await n(
     "SELECT COUNT(*) AS n FROM plan WHERE fiscal_year_id = ? AND org_unit_id = ? AND status = 'DRAFT'",
     fiscalYearId, orgUnitId,
   );
   if (draftPlans) todo.push({ label: "แผนงาน/โครงการที่ยังเป็นฉบับร่าง", href: "/cluster/plans", count: draftPlans });
 
-  const missingResults = n(
+  const missingResults = await n(
     `SELECT COUNT(*) AS n FROM plan p
       WHERE p.fiscal_year_id = ? AND p.org_unit_id = ?
         AND (SELECT COUNT(*) FROM plan_quarter_result r WHERE r.plan_id = p.id) < 4`,
@@ -172,7 +172,7 @@ export function todoForUnit(fiscalYearId: number, orgUnitId: number) {
   );
   if (missingResults) todo.push({ label: "แผนงานที่ยังบันทึกผลไม่ครบ 4 ไตรมาส", href: "/cluster/results/1", count: missingResults });
 
-  const noExpectation = n(
+  const noExpectation = await n(
     `SELECT COUNT(*) AS n FROM stakeholder s
       WHERE s.fiscal_year_id = ? AND s.org_unit_id = ?
         AND NOT EXISTS (SELECT 1 FROM expectation e WHERE e.stakeholder_id = s.id)`,

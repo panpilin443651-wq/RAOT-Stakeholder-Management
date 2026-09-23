@@ -20,11 +20,11 @@ export default async function ReportPage({
   if (!isReportCode(code)) notFound();
 
   const query = await searchParams;
-  const fiscalYearId = Number(query.fy) || currentFiscalYearRow().id;
+  const fiscalYearId = Number(query.fy) || (await currentFiscalYearRow()).id;
   const orgUnitId = scopedOrgUnitId(user) ?? (Number(query.unit) || undefined);
   const status = query.status || undefined;
 
-  const report = buildReport(code, { fiscalYearId, orgUnitId, status });
+  const report = await buildReport(code, { fiscalYearId, orgUnitId, status });
   const csvHref = `/api/reports/${code}?${new URLSearchParams({
     fy: String(fiscalYearId),
     ...(orgUnitId ? { unit: String(orgUnitId) } : {}),
@@ -40,7 +40,7 @@ export default async function ReportPage({
           {
             name: "fy",
             label: "ปีงบประมาณ",
-            options: listFiscalYears().map((y) => ({ value: String(y.id), label: String(y.year) })),
+            options: (await listFiscalYears()).map((y) => ({ value: String(y.id), label: String(y.year) })),
             value: String(fiscalYearId),
           },
           ...(isUnitScoped(user.role)
@@ -49,7 +49,7 @@ export default async function ReportPage({
                 {
                   name: "unit",
                   label: "ส่วนงาน",
-                  options: selectableUnits(user, listOrgUnits()).map((u) => ({ value: String(u.id), label: u.name })),
+                  options: selectableUnits(user, await listOrgUnits()).map((u) => ({ value: String(u.id), label: u.name })),
                   value: query.unit ?? "",
                 },
               ]),

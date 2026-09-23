@@ -1,4 +1,4 @@
-import { bind, bindInt, bindFloat, nowIso, run, get } from "@/lib/db";
+import { bind, bindInt, bindFloat, nowIso, run, get, insertId } from "@/lib/db";
 
 export type QuarterResultPayload = {
   plan_id: number;
@@ -60,11 +60,11 @@ const COLUMNS = [
   "status", "updated_at", "updated_by",
 ];
 
-export function saveQuarterResult(
+export async function saveQuarterResult(
   payload: QuarterResultPayload,
   status: string,
   username: string,
-): number {
+): Promise<number> {
   const values = [
     bind(payload.month1), bind(payload.month2), bind(payload.month3),
     bind(payload.forecast), bind(payload.problem), bind(payload.solution),
@@ -80,14 +80,14 @@ export function saveQuarterResult(
     bind(status), nowIso(), bind(username),
   ];
 
-  const existing = get<{ id: number }>(
+  const existing = await get<{ id: number }>(
     "SELECT id FROM plan_quarter_result WHERE plan_id = ? AND quarter = ?",
     payload.plan_id,
     payload.quarter,
   );
 
   if (existing) {
-    run(
+    await run(
       `UPDATE plan_quarter_result SET ${COLUMNS.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`,
       ...values,
       existing.id,
@@ -95,12 +95,11 @@ export function saveQuarterResult(
     return Number(existing.id);
   }
 
-  run(
+  return insertId(
     `INSERT INTO plan_quarter_result (plan_id, quarter, ${COLUMNS.join(", ")})
      VALUES (?, ?, ${COLUMNS.map(() => "?").join(", ")})`,
     payload.plan_id,
     payload.quarter,
     ...values,
   );
-  return Number(get<{ id: number }>("SELECT last_insert_rowid() AS id")!.id);
 }

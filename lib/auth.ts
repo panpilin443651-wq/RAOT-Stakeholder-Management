@@ -15,8 +15,8 @@ export type SessionUser = {
   org_unit_name: string;
 };
 
-export function findUser(username: string): SessionUser | undefined {
-  return get<SessionUser>(
+export async function findUser(username: string): Promise<SessionUser | undefined> {
+  return await get<SessionUser>(
     `SELECT u.id, u.username, u.full_name, u.position, u.role, u.org_unit_id,
             o.name AS org_unit_name
        FROM app_user u JOIN org_unit o ON o.id = u.org_unit_id
@@ -25,8 +25,8 @@ export function findUser(username: string): SessionUser | undefined {
   );
 }
 
-export function listUsers(): SessionUser[] {
-  return all<SessionUser>(
+export async function listUsers(): Promise<SessionUser[]> {
+  return await all<SessionUser>(
     `SELECT u.id, u.username, u.full_name, u.position, u.role, u.org_unit_id,
             o.name AS org_unit_name
        FROM app_user u JOIN org_unit o ON o.id = u.org_unit_id
@@ -39,7 +39,7 @@ export async function currentUser(): Promise<SessionUser | null> {
   const store = await cookies();
   const username = store.get(SESSION_COOKIE)?.value;
   if (!username) return null;
-  return findUser(username) ?? null;
+  return (await findUser(username)) ?? null;
 }
 
 /** ใช้ในหน้าที่ต้องล็อกอิน — ถ้ายังไม่ล็อกอินจะพาไปหน้า login */
